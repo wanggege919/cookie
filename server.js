@@ -2,6 +2,7 @@ var http = require('http')
 var fs = require('fs')
 var url = require('url')
 var port = process.argv[2]
+var md5 = require('md5')
 
 if (!port) {
   console.log('请指定端口号好不啦？\nnode server.js 8888 这样不会吗？')
@@ -23,8 +24,27 @@ var server = http.createServer(function (request, response) {
   /******** 从这里开始看，上面不要看 ************/
 
   console.log('方方说：含查询字符串的路径\n' + pathWithQuery)
-
-  if (path ==='/') {
+  if (path === '/js/main.js') {
+    let string = fs.readFileSync('./js/main.js', 'utf8') 
+    response.setHeader('Content-Type', 'application/javascript;charset=utf-8')
+    let fileMd5 = md5(string)
+    response.setHeader('ETag', fileMd5)
+    if(request.headers['if-none-match'] === fileMd5){
+      response.statusCode = 304
+      //没有write,也就是没有下载,没有响应体
+    }else{
+      //有响应体
+      response.write(string)
+      console.log(2)
+    }
+    response.end()
+  }else if(path === '/css/default.css'){
+    let string = fs.readFileSync('./css/default.css', 'utf8') 
+    response.setHeader('Content-Type', 'text/css;charset=utf-8')
+    response.setHeader('Cache-Control', 'max-age=30')//缓存控制
+    response.write(string)
+    response.end()
+  }else if (path === '/') {
     let string = fs.readFileSync('./index.html', 'utf8')
     let cookies = ''
     if (request.headers.cookie) {
@@ -37,15 +57,15 @@ var server = http.createServer(function (request, response) {
     //   let value = parts[1]
     //   hash[key] = value
     // })
-    for(let i=0;i<cookies.length;i++){
+    for (let i = 0; i < cookies.length; i++) {
       var parts = cookies[i].split('=')
-        let key = parts[0]
-        let value = parts[1]
-        hash[key] = value
+      let key = parts[0]
+      let value = parts[1]
+      hash[key] = value
     }
     let mySession = sessions[hash.sessionId]
     let email
-    if(mySession){
+    if (mySession) {
       email = mySession.sign_in_email
     }
     let users = fs.readFileSync('./db/users', 'utf8')
